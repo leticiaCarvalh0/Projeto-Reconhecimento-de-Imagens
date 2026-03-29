@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioScan AI | Detecção de Células</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🔬 BioScan AI</h1>
+        <p>Detecção Inteligente de Células com IA</p>
+    </header>
+
+    <div class="main-card">
+        <h2>Carregue uma Imagem para Análise</h2>
+        
+        <div class="upload-section" onclick="document.getElementById('imageInput').click()">
+            <i>📸</i>
+            <p style="margin: 10px 0; color: #666;">Clique aqui ou arraste uma imagem</p>
+            <small style="color: #999;">Formatos: JPG, PNG, GIF</small>
+        </div>
+
+        <input type="file" id="imageInput" style="display: none;" accept="image/*">
+        <img id="image-preview" src="" alt="Preview">
+
+        <div id="loading" style="display: none; margin: 20px 0;">
+            <div class="spinner"></div>
+            <p>IA Processando padrões celulares...</p>
+        </div>
+
+        <button onclick="analyzeImage()" style="display: none;" id="analyzeBtn">
+            Analisar Imagem
+        </button>
+
+        <div id="result">
+            <h3>Resultado da Análise:</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('image-preview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultDiv = document.getElementById('result');
+        const resultContent = document.getElementById('resultContent');
+
+        // Referência para a pasta onde estão os arquivos do modelo
+        const URL = "./my_model/";
+        let model, maxPredictions;
+
+        // Carrega o modelo assim que a página abre
+        async function init() {
+            try {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                console.log("Cérebro da IA carregado com sucesso!");
+            } catch (e) {
+                console.error("Erro ao carregar modelo. Verifique a pasta my_model", e);
+            }
+        }
+
+        // Lógica de Preview da Imagem
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.src = event.target.result;
+                    imagePreview.style.display = 'block';
+                    analyzeBtn.style.display = 'block';
+                    resultDiv.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Função de Análise com Feedback Visual
+        async function analyzeImage() {
+            if (!model) {
+                alert("Aguarde o carregamento do modelo...");
+                return;
+            }
+
+            // 1. Ativa o estado de carregamento visual
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = "⌛ Analisando padrões...";
+            
+            // 2. Pequena pausa (50ms) para dar tempo ao navegador de "desenhar" o novo texto na tela
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try {
+                // 3. Executa a IA (o que pesa)
+                const prediction = await model.predict(imagePreview);
+                
+                // 4. Mostra o resultado
+                resultDiv.style.display = 'block';
+                resultContent.innerHTML = "";
+
+                prediction.forEach(p => {
+                    const percentage = (p.probability * 100).toFixed(2);
+                    resultContent.innerHTML += `
+                        <div style="margin-bottom: 15px;">
+                            <div style="display:flex; justify-content: space-between;">
+                                <span>${p.className}</span>
+                                <strong>${percentage}%</strong>
+                            </div>
+                            <div style="background: #eee; height: 10px; border-radius: 5px;">
+                                <div style="background: #6366f1; width: ${percentage}%; height: 100%; border-radius: 5px; transition: width 0.8s;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Erro na predição:", err);
+                alert("Erro ao analisar a imagem.");
+            } finally {
+                // 5. Volta o botão ao normal independente de erro ou sucesso
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = "Analisar Imagem";
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
